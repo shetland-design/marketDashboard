@@ -19,5 +19,21 @@
             "article_content": "p",
             "bad_endings": ["chance to win a prize in return!"]
         }
+    },
+    {
+        "name": "science_daily",
+        "base_url": "https://www.sciencedaily.com/",
+        "rss_feeds": ["https://www.sciencedaily.com/rss/top/science.xml",
+                        "https://www.sciencedaily.com/rss/top/health.xml",
+                        "https://www.sciencedaily.com/rss/top/technology.xml",
+                        "https://www.sciencedaily.com/rss/top/environment.xml",
+                        "https://www.sciencedaily.com/rss/health_medicine/pharmaceuticals.xml",
+                        "https://www.sciencedaily.com/rss/computers_math/markets_and_finance.xml"],
+                        
+        "selectors": {
+            "article_container": "div#story_text",
+            "article_content": "p",
+            "bad_endings": []
+        }
     }
 ]

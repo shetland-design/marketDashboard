@@ -57,7 +57,6 @@ class ArticleScraper:
         return None
 
     def ends_with_phrase(self, p):
-        
         last_words = p
         return any(last_words.endswith(phrase) for phrase in self.selector.get("bad_endings", []))
 
@@ -87,7 +86,7 @@ class ArticleScraper:
         if paragraphs and self.ends_with_phrase(paragraphs[-1]):
             paragraphs = paragraphs[:-1]
 
-        full_text = "\n\n".join(paragraphs)
+        full_text = "".join(paragraphs)
 
         return {
             "content": full_text,
