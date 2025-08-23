@@ -1,0 +1,23 @@
+[
+    {
+        "name": "techcrunch",
+        "base_url": "https://techcrunch.com/",
+        "rss_feeds": ["https://techcrunch.com/category/security/feed/",
+                      "https://techcrunch.com/category/startups/feed/",
+                      "https://techcrunch.com/category/biotech-health/feed/",
+                      "https://techcrunch.com/category/artificial-intelligence/feed/",
+                      "https://techcrunch.com/category/venture/feed/",
+                      "https://techcrunch.com/category/robotics/feed/",
+                      "https://techcrunch.com/category/hardware/feed/",
+                      "https://techcrunch.com/category/fintech/feed/",
+                      "https://techcrunch.com/category/cryptocurrency/feed/",
+                      "https://techcrunch.com/category/commerce/feed/",
+                      "https://techcrunch.com/tag/cloud-computing/feed/",
+                      "https://techcrunch.com/category/enterprise/feed/"],
+        "selectors": {
+            "article_container": "main div.entry-content",
+            "article_content": "p",
+            "bad_endings": ["chance to win a prize in return!"]
+        }
+    }
+]
