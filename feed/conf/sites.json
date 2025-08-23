@@ -1,6 +1,7 @@
 [
     {
         "name": "techcrunch",
+        "type": "rss",
         "base_url": "https://techcrunch.com/",
         "rss_feeds": ["https://techcrunch.com/category/security/feed/",
                       "https://techcrunch.com/category/startups/feed/",
@@ -22,6 +23,7 @@
     },
     {
         "name": "science_daily",
+        "type": "rss",
         "base_url": "https://www.sciencedaily.com/",
         "rss_feeds": ["https://www.sciencedaily.com/rss/top/science.xml",
                         "https://www.sciencedaily.com/rss/top/health.xml",
@@ -35,5 +37,8 @@
             "article_content": "p",
             "bad_endings": []
         }
+    },
+    {
+
     }
 ]

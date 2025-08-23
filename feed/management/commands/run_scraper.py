@@ -3,8 +3,14 @@ from django.utils.dateparse import parse_datetime
 from datetime import datetime
 import json
 
-from feed.scraper import RssScraper, ArticleScraper
+from feed.scraper.api_scraper import BackendApiScraper
 from feed.models import NewsArticleModel
+from feed.scraper.utils import build_api_params
+from feed.scraper.rss_scraper import RssScraper
+from feed.scraper.article_scraper import ArticleScraper
+from feed.parsers.reuters import reuters_parser
+from feed.services.article_pipeline import process_entries
+
 
 class Command(BaseCommand):
     help = "Scrape RSS feeds, extract articles, and save them to the database"
@@ -42,57 +48,50 @@ class Command(BaseCommand):
             return
 
         for site in sites:
+
+            kind = site["type"]
+
             site_name = site.get("name", "<unknown>")
             self.stdout.write(f"Scraping site: {site_name}")
 
-            for feed_url in site.get("rss_feeds", [])[:feeds_per_site]:
-                self.stdout.write(f"  RSS feed: {feed_url}")
-                rss = RssScraper(feed_url, site_name)
-                articles = rss.fetch_articles(limit=articles_per_feed)
+            if kind == "rss":
+                self._run_rss(site, feeds_per_site, articles_per_feed)
 
-                for art in articles:
-                    scraper = ArticleScraper(art["link"], site.get("selectors", {}))
-                    result = scraper.get_article_content()
+            elif kind == "api":
+                self._run_api(site, reuters_parser)
 
-                    if not result or not result.get("content"):
-                        self.stdout.write(self.style.WARNING(
-                            f"    Failed to extract: {art['title']}"
-                        ))
-                        continue
+    def _run_rss(self, site: dict, feeds_per_site: int, articles_per_feed: int):
+        for feed_url in site.get("rss_feeds", [])[:feeds_per_site]:
+            self.stdout.write(f"  • RSS feed: {feed_url}")
+            rss = RssScraper(feed_url, site["name"])
+            entries = rss.fetch_articles(limit=articles_per_feed)
+            process_entries(entries, site)
 
-                    published_raw = art.get("published")
-                    if isinstance(published_raw, datetime):
-                        published_date = published_raw.date()
-                    elif isinstance(published_raw, str):
-                        parsed = parse_datetime(published_raw)
-                        published_date = parsed.date() if parsed else None
-                    else:
-                        published_date = None
+    def _run_api(self, site: dict, parser_func: callable):
+        api_cfg = site["api"]
+        params = build_api_params(api_cfg["params"])
 
-                    data = {
-                        "source": site_name,
-                        "title": art["title"],
-                        "link": art["link"],
-                        "published": published_date,
-                        "summary": art.get("summary", ""),
-                        "full_content": result["content"],
-                        "categories": art.get("categories", []),
-                    }
+        scraper = BackendApiScraper(
+            url=api_cfg["url"],
+            source=site["name"],
+            params=params,
+            parser=parser_func
+            )
 
-                    #  ---- Saving the data to the database ----
+        entries = scraper.fetch_articles()
+        process_entries(entries, site)
 
-                    print(f"\n\n\n{data["title"]} \n\n {data['full_content'][:200]}\n\n\n")
+            #  ---- Saving the data to the database ----
                     
-
-                    # try:
-                    #     article, created = NewsArticleModel.objects.get_or_create(
-                    #         title=data["title"],
-                    #         defaults=data
-                    #     )
-                    #     status = "Saved" if created else "Skipped (duplicate)"
-                    #     self.stdout.write(f"    {status}: {data['title']}")
-                    # except Exception as e:
-                    #     print(f"Error saving {data["title"]}: {e}")
+            # try:
+            #    article, created = NewsArticleModel.objects.get_or_create(
+            #    title=data["title"],
+            #    defaults=data
+            #    )
+            #     status = "Saved" if created else "Skipped (duplicate)"
+            #     self.stdout.write(f"    {status}: {data['title']}")
+            # except Exception as e:
+            #     print(f"Error saving {data["title"]}: {e}")  
 
 
                 
