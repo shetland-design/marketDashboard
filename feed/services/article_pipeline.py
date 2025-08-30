@@ -1,7 +1,8 @@
 from django.utils.dateparse import parse_datetime
 from datetime import datetime
-from feed.models import NewsArticleModel
 from feed.scraper.article_scraper import ArticleScraper
+import json
+
 
 def normalize_published(raw):
     if isinstance(raw, datetime):
@@ -12,20 +13,52 @@ def normalize_published(raw):
     return None
 
 def process_entries(entries: list[dict], site: dict):
-    for art in entries:
-        scraper = ArticleScraper(art["link"], site.get("selectors", {}))
-        result = scraper.get_article_content()
 
-        if not result or not result.get("content"):
+    for art in entries:
+        scraper = ArticleScraper(art["link"])
+        result = scraper.extract_comprehensive()
+
+        if not result:
             continue
 
-        published_date = normalize_published(art.get("published"))
+
         data = {
-            "source":     site["name"],
-            "title":      art["title"],
-            "link":       art["link"],
-            "published":  published_date,
-            "summary":    art.get("summary", ""),
-            "full_content": result["content"],
-            "categories": art.get("categories", []),
+            "source": site["name"],
+            "title": result["title"],
+            "link": result["url"],
+            "published": result["date"],
+            "full_content": result["text"],
         }
+
+        return data
+        
+
+def process_links(entries: list, site: dict):
+
+    for art in entries:
+        scraper = ArticleScraper(art)
+        result = scraper.extract_comprehensive()
+
+        if not result:
+            continue
+
+
+        data = {
+            "source": site["name"],
+            "title": result["title"],
+            "link": result["url"],
+            "published": result["date"],
+            "full_content": result["text"],
+        }
+
+        return data
+
+        
+
+        
+
+
+
+    
+
+   

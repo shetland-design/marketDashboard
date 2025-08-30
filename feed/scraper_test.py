@@ -1,24 +1,19 @@
-from scraper import RssScraper, ArticleScraper
+from scraper import api_scraper
 
 
-def test_science_daily():
-    rss = RssScraper("https://www.sciencedaily.com/rss/top/science.xml", "ScienceDailyScience")
+def test_static():
+    scraper = api_scraper.BackendApiScraper(
+        url="https://thenextweb.com/deep-tech", 
+        source="the_next_web",
+        categories=[], 
+        selectors={
+            "container":"main.c-split__main",
+            "articles": "article a"
+    }
+    )
+    links = scraper.fetch_article_links(limit=5)
 
-    articles = rss.fetch_articles(limit=3)
+    print(links)
 
-    for art in articles:
-            print("=" * 80)
-            print(f"Title: {art['title']}")
-            print(f"Link: {art['link']}")
-            print(f"Published: {art['published']}")
-            print(f"Summary: {art['summary'][:150]}...")
-
-            select = "div#story_text p"
-            scraper = ArticleScraper(art["link"], select)
-            full_text = scraper.article_content_2()
-
-            if full_text:
-                print("\nExtracted content preview:")
-                print(full_text[-10:], "...\n")
-            else:
-                print("\n Could not extract content\n")
+if __name__ == "__main__":
+    test_static()

@@ -18,12 +18,26 @@ class RssScraper:
             if 'tags' in entry:
                 categories = [tag['term'] for tag in entry.tags if 'term' in tag]
 
+            published = (
+            entry.get("published") or
+            entry.get("updated") or
+            entry.get("pubDate") or
+            entry.get("dc_date") or
+            None
+            )
+
+            # If we have a parsed struct_time, convert to ISO
+            if hasattr(entry, "published_parsed") and entry.published_parsed:
+                published = datetime(*entry.published_parsed[:6]).isoformat()
+            elif hasattr(entry, "updated_parsed") and entry.updated_parsed:
+                published = datetime(*entry.updated_parsed[:6]).isoformat()
+            elif not published:
+                published = datetime.now().isoformat() 
+
             articles.append({
                 "source": self.source_name,
                 "title": entry.get("title", ""),
                 "link": entry.get("link", ""),
-                "summary": entry.get("summary", ""),
-                "published": entry.get("published", datetime.now().isoformat()),
-                "categories": categories
+                "published": published,
             })
         return articles

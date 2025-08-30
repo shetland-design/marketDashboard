@@ -6,9 +6,7 @@ class NewsArticleModel(models.Model):
     title = models.CharField(unique=True, max_length=300)
     link = models.URLField(unique=True)
     published = models.DateField()
-    summary = models.TextField(blank=True, null=True)
     full_content = models.TextField()
-    tags = models.JSONField(blank=True, null=True)
 
     class Meta:
         indexes = [

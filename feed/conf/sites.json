@@ -14,12 +14,7 @@
                       "https://techcrunch.com/category/cryptocurrency/feed/",
                       "https://techcrunch.com/category/commerce/feed/",
                       "https://techcrunch.com/tag/cloud-computing/feed/",
-                      "https://techcrunch.com/category/enterprise/feed/"],
-        "selectors": {
-            "article_container": "main div.entry-content",
-            "article_content": "p",
-            "bad_endings": ["chance to win a prize in return!"]
-        }
+                      "https://techcrunch.com/category/enterprise/feed/"]
     },
     {
         "name": "science_daily",
@@ -30,15 +25,148 @@
                         "https://www.sciencedaily.com/rss/top/technology.xml",
                         "https://www.sciencedaily.com/rss/top/environment.xml",
                         "https://www.sciencedaily.com/rss/health_medicine/pharmaceuticals.xml",
-                        "https://www.sciencedaily.com/rss/computers_math/markets_and_finance.xml"],
-                        
-        "selectors": {
-            "article_container": "div#story_text",
-            "article_content": "p",
-            "bad_endings": []
-        }
+                        "https://www.sciencedaily.com/rss/computers_math/markets_and_finance.xml"]
     },
     {
+        "name": "CNN",
+        "type": "rss",
+        "base_url": "https://www.cnn.com/",
+        "rss_feeds": ["http://rss.cnn.com/rss/edition.rss"]
+    },
+    {
+        "name": "wired",
+        "type": "rss",
+        "base_url": "https://www.wired.com/",
+        "rss_feeds": ["https://www.wired.com/feed/rss"]
+        
+    },
+    {
+        "name": "mashable",
+        "type": "rss",
+        "base_url": "https://www.mashable.com/",
+        "rss_feeds": ["https://in.mashable.com/sleep.xml"]
+        
+    },
+    {
+        "name": "CNET",
+        "type": "rss",
+        "base_url": "https://www.cnet.com/",
+        "rss_feeds":["https://www.cnet.com/rss/news/?_gl=1*1grfumi*_up*MQ..*_ga*MTczMTE2OTU2Mi4xNzU2MTI1NDUx*_ga_R820W8QX02*czE3NTYxMjU0NTEkbzEkZzAkdDE3NTYxMjU0NTEkajYwJGwwJGgxMDU5MTgyNTI4"]
+    },
+    {
+        "name": "BBC",
+        "type": "rss",
+        "base_url": "",
+        "rss_feeds": ["https://feeds.bbci.co.uk/news/rss.xml",
+                      "https://feeds.bbci.co.uk/news/world/rss.xml",
+                      "https://feeds.bbci.co.uk/news/business/rss.xml",
+                      "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
+                      "https://feeds.bbci.co.uk/news/technology/rss.xml"]
+    },
+    {
+        "name": "the_verge",
+        "type": "rss",
+        "base_url": "",
+        "rss_feeds": [
+            "https://www.theverge.com/rss/exclusive/index.xml",
+            "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
+            "https://www.theverge.com/rss/energy/index.xml",
+            "https://www.theverge.com/rss/business/index.xml",
+            "https://www.theverge.com/rss/cyber-security/index.xml",
+            "https://www.theverge.com/rss/tech/index.xml",
+            "https://www.theverge.com/rss/science/index.xml"
+        ]
 
+    },
+    {
+        "name": "business_insider",
+        "type": "normal",
+        "base_url": "https://www.businessinsider.com",
+        "url": "https://www.businessinsider.com/sitemap/html/{year}-{month}.html",
+        "selectors": {
+            "container":"",
+            "articles":"p a"
+        },
+        "categories": []
+    },
+    {
+        "name": "investopedia",
+        "type": "rss",
+        "base_url": "",
+        "rss_feeds": ["https://feeds-api.dotdashmeredith.com/v1/rss/google/f8466ec3-5044-46bc-94b7-2df65f770eff"]
+
+    },
+    {
+        "name": "ars_technica",
+        "type": "rss",
+        "base_url": "",
+        "rss_feeds": [
+            "https://feeds.arstechnica.com/arstechnica/index",
+            "https://feeds.arstechnica.com/arstechnica/technology-lab",
+            "https://feeds.arstechnica.com/arstechnica/tech-policy",
+            "https://feeds.arstechnica.com/arstechnica/science"
+
+        ]
+    },
+    {
+        "name": "gizmodo",
+        "type": "rss",
+        "base_url": "",
+        "rss_feeds": ["https://gizmodo.com/feed"]
+
+    },
+    {
+        "name": "MIT_technology_review",
+        "type": "rss",
+        "base_url": "",
+        "rss_feeds": [
+            "https://www.technologyreview.com/feed"
+        ]
+    },
+    {
+        "name": "zdnet",
+        "type": "sitemap",
+        "base_url": "",
+        "sitemap": "https://www.zdnet.com/sitemaps/news.xml"
+    },
+    {
+        "name": "infoworld",
+        "type": "normal",
+        "base_url": "https://www.infoworld.com",
+        "url": "https://www.infoworld.com/{category}/#article",
+        "categories": ["analytics", "artifical-intelligence", "generative-ai", "careers", "cloud-computing",
+    "data-management", "databases", "emerging-technology", "technology-industry", "security", "software-development",
+"devops"],
+        "selectors": {
+            "container": "div.content-listing-articles__container",
+            "articles": "div.content-listing-articles__row a"
+    }
+    },
+    {
+        "name": "siliconangle",
+        "type":"rss",
+        "base_url": "",
+        "rss_feeds": ["https://siliconangle.com/feed/"]
+    },
+    {
+        "name": "tech.eu",
+        "type": "rss",
+        "base_url": "",
+        "rss_feeds": ["https://tech.eu/feed"]
+    },
+    {
+        "name": "the_next_web",
+        "base_url": "https://thenextweb.com",
+        "url": "https://thenextweb.com/{category}",
+        "type":"normal",
+        "categories":["latest", "deep-tech", "sustainability", "ecosytems", 
+        "data-security", "fintech-ecommerce", "future-of-work", "startups-technology", 
+        "investors-funding", "government-policy", "corporates-innovation"],
+        "selectors": {
+            "container":"main.c-split__main",
+            "articles": "article a"
+    }
+        
     }
 ]
+
