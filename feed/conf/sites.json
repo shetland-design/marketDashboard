@@ -132,7 +132,7 @@
     {
         "name": "infoworld",
         "type": "normal",
-        "base_url": "https://www.infoworld.com",
+        "base_url": "https://www.infoworld.com/",
         "url": "https://www.infoworld.com/{category}/#article",
         "categories": ["analytics", "artifical-intelligence", "generative-ai", "careers", "cloud-computing",
     "data-management", "databases", "emerging-technology", "technology-industry", "security", "software-development",
@@ -156,7 +156,7 @@
     },
     {
         "name": "the_next_web",
-        "base_url": "https://thenextweb.com",
+        "base_url": "https://thenextweb.com/",
         "url": "https://thenextweb.com/{category}",
         "type":"normal",
         "categories":["latest", "deep-tech", "sustainability", "ecosytems", 

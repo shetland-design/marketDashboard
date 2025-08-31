@@ -3,6 +3,7 @@ from datetime import datetime
 from feed.scraper.article_scraper import ArticleScraper
 import json
 import asyncio
+import logging
 
 def normalize_published(raw):
     if isinstance(raw, datetime):
@@ -11,70 +12,48 @@ def normalize_published(raw):
         parsed = parse_datetime(raw)
         return parsed.date() if parsed else None
     return None
-
-# def process_entries(entries: list[dict], site: dict):
-
-#     for art in entries:
-#         scraper = ArticleScraper(art["link"])
-#         result = scraper.extract_comprehensive()
-
-#         if not result:
-#             continue
-
-
-#         data = {
-#             "source": site["name"],
-#             "title": result["title"],
-#             "link": result["url"],
-#             "published": result["date"],
-#             "full_content": result["text"],
-#         }
-
-#         return data
-        
-
-# async def process_links(entries: list, site: dict):
-
-#     for art in entries:
-#         scraper = ArticleScraper(art)
-#         result = await scraper.extract_comprehensive()
-
-#         if not result:
-#             continue
-
-
-#         data = {
-#             "source": site["name"],
-#             "title": result["title"],
-#             "link": result["url"],
-#             "published": result["date"],
-#             "full_content": result["text"],
-#         }
-
-#         return data
    
 async def process_articles(entries: list, site: dict, from_dicts: bool = True) -> list[dict]:
-    tasks = []
 
-    for art in entries:
-        link = art["link"] if from_dicts else art  
-        tasks.append(scrape_article(link, site))
+    if not entries:
+        return []
 
-    results = await asyncio.gather(*tasks)
-    return [res for res in results if res]  
+    semaphore = asyncio.Semaphore(10)
 
+    async def scrape_with_limit(entry):
+        async with semaphore:
+            link = entry["link"] if from_dicts else entry
+            return await scrape_article(link, site)
+        
+    tasks = [scrape_with_limit(entry) for entry in entries]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    successful_results = []
+    for result in results:
+        if not isinstance(result, Exception) and result:
+            successful_results.append(result)
+        elif isinstance(result, Exception):
+            logging.error(f"Article processing failed: {result}")
+
+    return successful_results
 
 async def scrape_article(link: str, site: dict) -> dict | None:
-    scraper = ArticleScraper(link)
-    result = await scraper.extract_comprehensive()
+    
+    try:
+        async with ArticleScraper(link) as scraper:
+            result = await scraper.extract_comprehensive()
 
-    if not result:
+            if not result or not result.get("title"):
+                return None
+            
+            return {
+                "source": site["name"],
+                "title": result["title"],
+                "link": result["url"],
+                "published": result["date"],
+                "full_content": result["text"]
+            }
+    
+    except Exception as e:
+        logging.error(f"Failed to scrape {link}: {e}")
         return None
-
-    return {
-        "source": site["name"],
-        "title": result["title"],
-        "link": result["url"],
-        "published": result["date"],
-        "full_content": result["text"],
-    }

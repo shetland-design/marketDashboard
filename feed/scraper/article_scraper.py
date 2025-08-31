@@ -17,7 +17,15 @@ logger = logging.getLogger(__name__)
 class ArticleScraper:
     def __init__(self, url):
         self.url = url
-        self.client = httpx.Client(
+        self.html_content = None
+        self.parser = None
+
+    async def fetch_article_page(self):
+        
+        if self.html_content:
+            return self.html_content
+        
+        async with httpx.AsyncClient(
             headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/115 Safari/537.36",
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
@@ -26,16 +34,8 @@ class ArticleScraper:
                 "Connection": "keep-alive",
             },
             timeout=30.0
-        )
-        self.html_content = None
-        self.parser = None
-
-    async def fetch_article_page(self):
-        async with httpx.AsyncClient(
-            headers=self.client.headers,
-            timeout=self.client.timeout
         ) as client:
-            try: 
+            try:
                 resp = await client.get(self.url)
                 resp.raise_for_status()
                 self.html_content = resp.text
@@ -388,6 +388,13 @@ class ArticleScraper:
         
         # Try multiple extraction methods
         methods = []
+
+        if not self.html_content:
+            await self.fetch_article_page()
+
+        if not self.html_content:
+            result["extraction_method"] = "failed to fetch"
+            return result
         
         # Method 1: Custom extraction
         try:

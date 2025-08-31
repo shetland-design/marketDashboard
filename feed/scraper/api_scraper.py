@@ -1,6 +1,8 @@
 import httpx
 from selectolax.parser import HTMLParser
 from datetime import datetime
+import asyncio
+import logging
 
 class BackendApiScraper:
     def __init__(self, url: str, source: str, selectors: dict, base_url: str, category: str = None):
@@ -26,34 +28,47 @@ class BackendApiScraper:
 
         return url_template
         
-    def fetch_data(self):
-        with httpx.Client(headers=self.headers) as client:
-            response = client.get(self.final_url)
-            print(response.raise_for_status())
-            return response.text
+    async def fetch_data_async(self):
+        async with httpx.AsyncClient(headers=self.headers, timeout=30.0) as client:
+            try:
+                response = await client.get(self.final_url)
+                response.raise_for_status()
+                return response.text
+            except Exception as e:
+                logging.error(f"Failed to fetch {self.final_url}: {e}")
+                return None
+            
+    async def fetch_article_links_async(self, limit: int = None):
+        html_content = await self.fetch_data_async()
+        if not html_content:
+            return []
+        
+        def parse_links():
+            tree = HTMLParser(html_content)
 
-    def fetch_container(self):
-        tree = HTMLParser(self.fetch_data())
-        container = tree.css_first(self.selectors["container"])
-        return container
+            if self.selectors.get("container"):
+                container = tree.css_first(self.selectors["container"])
+                if not container:
+                    container = tree
+            else:
+                container = tree
+
+            links = []
+            for node in container.css(self.selectors["articles"]):
+                href = node.attributes.get("href")
+                if href:
+                    if not href.startswith("http"):
+                        href = f"{self.base_url.rstrip('/')}/{href.lstrip('/')}"
+                    links.append(href)
+
+            return links[:limit] if limit else links
+        
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, parse_links)
     
     def fetch_article_links(self, limit: int = None):
-        if self.selectors["container"]:
-            contain = self.fetch_container()
-        contain = HTMLParser(self.fetch_data())
-        links = []
+        return asyncio.run(self.fetch_article_links_async(limit))
 
-        for node in contain.css(self.selectors["articles"]):
-            if node.attributes.get('href'):
-                link = node.attributes.get('href')
-                if self.base_url not in link:
-                    link = f"{self.base_url}{link}"
-            links.append(link)
-
-        result = links if limit is None else links[:limit]
-        print(result)
-        return result
-
-
+   
 
         
