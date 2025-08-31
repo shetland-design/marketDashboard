@@ -7,6 +7,7 @@ from datetime import datetime
 import re
 from urllib.parse import urlparse
 import logging
+import asyncio
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -29,26 +30,29 @@ class ArticleScraper:
         self.html_content = None
         self.parser = None
 
-    def fetch_article_page(self):
-        """Fetch the HTML content of the article"""
-        try: 
-            resp = self.client.get(self.url)
-            resp.raise_for_status()
-            self.html_content = resp.text
-            self.parser = HTMLParser(self.html_content)
-            return self.html_content
-        except httpx.RequestError as e:
-            logger.error(f"Request failed for {self.url}: {e}")
-        except httpx.HTTPStatusError as e:
-            logger.error(f"Bad status {e.response.status_code} for {self.url}")
+    async def fetch_article_page(self):
+        async with httpx.AsyncClient(
+            headers=self.client.headers,
+            timeout=self.client.timeout
+        ) as client:
+            try: 
+                resp = await client.get(self.url)
+                resp.raise_for_status()
+                self.html_content = resp.text
+                self.parser = HTMLParser(self.html_content)
+                return self.html_content
+            except httpx.RequestError as e:
+                logger.error(f"Request failed for {self.url}: {e}")
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Bad status {e.response.status_code} for {self.url}")
         return None
 
-    def extract_title_multiple_methods(self):
+    async def extract_title_multiple_methods(self):
         """Extract title using multiple methods with fallbacks"""
         titles = []
         
         if not self.html_content:
-            self.fetch_article_page()
+            await self.fetch_article_page()
             
         if not self.parser:
             return None
@@ -100,12 +104,12 @@ class ArticleScraper:
         
         return titles[0] if titles else None
 
-    def extract_date_multiple_methods(self):
+    async def extract_date_multiple_methods(self):
         """Extract publication date using multiple methods"""
         dates = []
         
         if not self.html_content:
-            self.fetch_article_page()
+            await self.fetch_article_page()
             
         if not self.parser:
             return None
@@ -262,54 +266,116 @@ class ArticleScraper:
         
         return title.strip()
 
-    def newspaper_scraper(self):
-        """Use newspaper3k library for extraction"""
+    async def newspaper_scraper(self):
         try:
+        # Fetch HTML content if not already available
+            if not self.html_content:
+                await self.fetch_article_page()
+        
+        # Validate HTML content exists
+            if not self.html_content:
+                logging.warning(f"No HTML content available for URL: {self.url}")
+                return None
+        
+        # Validate URL
+            if not hasattr(self, 'url') or not self.url:
+                logging.error("No URL provided for scraping")
+                return None
+
             article = Article(self.url)
-            article.download()
-            article.parse()
             
-            return {
-                'title': article.title,
-                'text': article.text,
-                'authors': article.authors,
-                'publish_date': article.publish_date,
-                'top_image': article.top_image,
-                'summary': article.summary if hasattr(article, 'summary') else None
-            }
-        except Exception as e:
-            logger.error(f"Newspaper extraction failed: {e}")
-            return None
-
-    def trafilatura_scraper(self, is_json: bool = False):
-        """Enhanced trafilatura extraction with metadata"""
-        try:
-            downloaded = traf.fetch_url(self.url)
-            if downloaded:
-                if is_json:
-                    result = traf.extract(
-                        downloaded, 
-                        no_fallback=False,  # Allow fallback methods
-                        output_format='json',
-                        include_comments=False,
-                        include_tables=True
-                    )
-                    if result:
-                        return json.loads(result)
+            try:
+                # Method 1: Try as a method call
+                if hasattr(article, 'article_html') and callable(article.article_html):
+                    article.article_html(self.html_content)
+                # Method 2: Try setting as property
+                elif hasattr(article, 'article_html'):
+                    article.article_html = self.html_content
+                # Method 3: Try set_html method (newer versions)
+                elif hasattr(article, 'set_html') and callable(article.set_html):
+                    article.set_html(self.html_content)
+                # Method 4: Try setting html property directly
+                elif hasattr(article, 'html'):
+                    article.html = self.html_content
                 else:
-                    result = traf.extract(
-                        downloaded, 
-                        no_fallback=False,
-                        include_comments=False,
-                        include_tables=True
-                    )
-                    return result
+                    logging.error("Unable to set HTML content on Article object")
+                    return None
+            except Exception as html_error:
+                logging.error(f"Failed to set HTML content: {html_error}")
+                return None
+
+            def parse_article():
+                article.download()
+                article.parse()
+                return article
+            
+            try:
+                loop = asyncio.get_event_loop()
+                article = await loop.run_in_executor(None, parse_article)
+            except Exception as parse_error:
+                logging.error(f"Failed to parse article: {parse_error}")
+                return None
+
+
+            if not article.title and not article.text:
+                logging.warning(f"Failed to extract meaningful content from {self.url}")
+                return None
+            
+            publish_date = None
+            if article.publish_date:
+                if isinstance(article.publish_date, datetime):
+                    publish_date = article.publish_date.isoformat()
+                else:
+                    publish_date = str(article.publish_date)
+
+            text_content = article.text.strip() if article.text else ""
+            title = article.title.strip() if article.title else ""
+
+            return {
+                "title": title,
+                "text": text_content,
+                "authors": article.authors or [],
+                "publish_date": publish_date
+                }
+        
+        except ImportError as e:
+            logging.error(f"newspaper3k library not available: {e}")
+            return None
+        except AttributeError as e:
+            logging.error(f"Missing required attributes: {e}")
             return None
         except Exception as e:
-            logger.error(f"Trafilatura extraction failed: {e}")
+            logging.error(f"Unexpected error scraping {getattr(self, 'url', 'unknown URL')}: {e}")
             return None
+        
 
-    def extract_comprehensive(self):
+    async def trafilatura_scraper(self, is_json: bool = False):
+        if not self.html_content:
+            await self.fetch_article_page()  # fetch once if not done yet
+
+        if not self.html_content:
+            return None
+            
+        if is_json:
+            result = traf.extract(
+                self.html_content, 
+                no_fallback=False,  # Allow fallback methods
+                output_format='json',
+                include_comments=False,
+                include_tables=True
+                    ) 
+            return json.loads(result)
+        else:
+            return traf.extract(
+                self.html_content,
+                no_fallback=False,
+                include_comments=False,
+                include_tables=True
+                    )
+                    
+            
+
+    async def extract_comprehensive(self):
         """Extract article data using all available methods"""
         result = {
             'url': self.url,
@@ -325,8 +391,8 @@ class ArticleScraper:
         
         # Method 1: Custom extraction
         try:
-            title = self.extract_title_multiple_methods()
-            date = self.extract_date_multiple_methods()
+            title = await self.extract_title_multiple_methods()
+            date = await self.extract_date_multiple_methods()
             if title or date:
                 methods.append('custom_selectors')
                 if title:
@@ -338,7 +404,7 @@ class ArticleScraper:
 
         # Method 2: Trafilatura with JSON
         try:
-            traf_result = self.trafilatura_scraper(is_json=True)
+            traf_result = await self.trafilatura_scraper(is_json=True)
             if traf_result:
                 methods.append('trafilatura')
                 if not result['title'] and traf_result.get('title'):
@@ -354,7 +420,7 @@ class ArticleScraper:
 
         # Method 3: Newspaper3k
         try:
-            newspaper_result = self.newspaper_scraper()
+            newspaper_result = await self.newspaper_scraper()
             if newspaper_result:
                 methods.append('newspaper')
                 if not result['title'] and newspaper_result.get('title'):

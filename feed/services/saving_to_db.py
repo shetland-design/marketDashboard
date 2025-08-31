@@ -1,20 +1,43 @@
 from feed.models import NewsArticleModel
 import logging
+import asyncio
+from asgiref.sync import sync_to_async
 
 logger = logging.getLogger(__name__)
 
-def save_article(data: dict) -> NewsArticleModel | None:
-    try:
-        if not data.get("link"):
-            logger.warning("Skipping article: missing 'link'")
-            return None
 
-        obj, created = NewsArticleModel.objects.get_or_create(
-            link=data["link"],
-            defaults={k: v for k, v in data.items() if k != "link"}
-        )
-        return obj
+@sync_to_async
+def save_articles(data: list) -> NewsArticleModel | None:
+    results = {
+        'saved': [],
+        'failed': [],
+        'total_attempted': len(data)
+    }
 
-    except Exception as e:
-        logger.error(f"Failed to save article: {data.get('title', 'Unknown')} — {e}")
-        return None
+    for article in data:
+        try:
+            if not article.get("link"):
+                results['failed'].append({
+                    'data': article,
+                    'error': "Missing link"
+                })
+                continue
+
+            obj, created = NewsArticleModel.objects.get_or_create(
+                link=article["link"],
+                defaults={k: v for k, v in article.items() if k != "link"}
+            )
+            results['saved'].append({
+                'object': obj,
+                'created': created
+            })
+
+        except Exception as e:
+            logger.error(f"Failed to save article: {article.get('title', 'Unknown')} — {e}")
+            results['failed'].append({
+                'data': article,
+                'error': str(e)
+            })
+    
+    logger.info(f"Bulk save completed: {len(results['saved'])} saved, {len(results['failed'])} failed")
+    return results

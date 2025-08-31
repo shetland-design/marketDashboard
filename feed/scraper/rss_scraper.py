@@ -1,13 +1,25 @@
 import feedparser
 from datetime import datetime
+import asyncio
+import aiohttp
+
 
 class RssScraper:
     def __init__(self, feed_url:str, source_name: str):
         self.feed_url = feed_url
         self.source_name = source_name
 
-    def fetch_articles(self, limit: int = None):
-        feed = feedparser.parse(self.feed_url)
+    # This uses async(aiohttp) to get the raw xml text because feedparser doesn't support async.
+
+    async def fetch_feed_text(self, session: aiohttp.ClientSession) -> str:
+        async with session.get(self.feed_url, timeout=10, allow_redirects=True) as resp:
+            resp.raise_for_status()
+            return await resp.text()
+
+    async def fetch_articles(self, session: aiohttp.ClientSession, limit: int = None):
+        raw_feed = await self.fetch_feed_text(session)
+        feed = feedparser.parse(raw_feed)
+
         articles = []
         entries = feed.entries if limit is None else feed.entries[:limit]
 

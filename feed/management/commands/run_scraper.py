@@ -2,6 +2,9 @@ from django.core.management.base import BaseCommand
 from django.utils.dateparse import parse_datetime
 from datetime import datetime
 import json
+import asyncio
+import aiohttp
+import logging
 
 from feed.scraper.api_scraper import BackendApiScraper
 from feed.models import NewsArticleModel
@@ -10,9 +13,9 @@ from feed.scraper.rss_scraper import RssScraper
 from feed.scraper.article_scraper import ArticleScraper
 from feed.scraper.sitemap_scraper import SitemapScraper
 from feed.parsers.reuters import reuters_parser
-from feed.services.article_pipeline import process_entries, process_links
+from feed.services.article_pipeline import process_articles
 from feed.parsers import PARSER_REGISTRY
-from feed.services.saving_to_db import save_article
+from feed.services.saving_to_db import save_articles
 
 
 class Command(BaseCommand):
@@ -71,17 +74,39 @@ class Command(BaseCommand):
             self.stdout.write(f"Sitemap: {url}")
             sitemap = SitemapScraper(url)
             links = sitemap.fetch_articles(limit=articles_per_feed)
-            process_links(links, site)
+            process_articles(links, site, from_dicts=False)
             
         
 
     def _run_rss(self, site: dict, feeds_per_site: int, articles_per_feed: int):
-        for feed_url in site.get("rss_feeds", [])[:feeds_per_site]:
-            self.stdout.write(f"  • RSS feed: {feed_url}")
-            rss = RssScraper(feed_url, site["name"])
-            entries = rss.fetch_articles(limit=articles_per_feed)
-            data = process_entries(entries, site)
-            save_article(data)
+        asyncio.run(self._run_rss_async(site, feeds_per_site, articles_per_feed))
+
+    async def _run_rss_async(self, site:dict, feeds_per_site: int, articles_per_feed: int):
+        feed_urls = site.get("rss_feeds", [])[:feeds_per_site]
+
+        async with aiohttp.ClientSession() as session:
+            tasks = []
+            for feed_url in feed_urls:
+                self.stdout.write(f"  RSS feeds: {feed_url}")
+                scraper = RssScraper(feed_url, site["name"])
+                tasks.append(scraper.fetch_articles(session, limit=articles_per_feed))
+            
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+
+            article_tasks = []
+            for entries in results:
+                article_tasks.append(process_articles(entries, site))
+
+            processed_articles = await asyncio.gather(*article_tasks, return_exceptions=True)
+
+            for articles in processed_articles:
+                # data is all the articles from one rss feed
+                if isinstance(articles, Exception):
+                    print(f"Article processing failed: {articles}")
+                    continue
+                await save_articles(articles)
+            
             
 
     def _run_api(self, site: dict, feeds_per_site: int, articles_per_feed: int):
@@ -98,8 +123,8 @@ class Command(BaseCommand):
                 )
 
                 links = scraper.fetch_article_links(limit=articles_per_feed)
-                data = process_links(links, site)
-                save_article(data)
+                data = process_articles(links, site, from_dicts=False)
+                # save_article(data)
 
         else: 
 
@@ -109,10 +134,9 @@ class Command(BaseCommand):
                 source=site["name"],
                 selectors=site["selectors"]
                 )
-            
             links = scraper.fetch_article_links(limit=articles_per_feed)
-            data = process_links(links, site)
-            save_article(data)
+            data = process_articles(links, site, False)
+            # save_article(data)
 
 
                 
